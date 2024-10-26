@@ -2,62 +2,86 @@ import discord
 from discord.ext import commands
 import json
 import os
-from dotenv import load_dotenv  # Import for loading .env files
+from dotenv import load_dotenv
 
-# Load environment variables from .env file if present
+# Load environment variables from .env file
 load_dotenv()
 
-# Get the bot token from an environment variable
-TOKEN = os.getenv("DISCORD_BOT_TOKEN")
+# Load data from JSON file
+def load_data():
+    if not os.path.exists('employee_data.json'):
+        return {}
+    with open('employee_data.json', 'r') as file:
+        return json.load(file)
 
+# Save data to JSON file
+def save_data(data):
+    with open('employee_data.json', 'w') as file:
+        json.dump(data, file, indent=4)
+
+# Set up bot with command prefix
 intents = discord.Intents.default()
-bot = commands.Bot(command_prefix="/", intents=intents)
+intents.message_content = True
+bot = commands.Bot(command_prefix='/', intents=intents)
 
-# Load employee work data if it exists
-if os.path.exists("employee_data.json"):
-    with open("employee_data.json", "r") as f:
-        employee_data = json.load(f)
-else:
-    employee_data = {}
+# Global variable to store employee contributions
+employee_data = load_data()
 
-# Command for employees to log collected items
-@bot.command(name="darbas")
-async def add_work(ctx, item_name: str, amount: int):
-    employee = str(ctx.author)
-    if employee not in employee_data:
-        employee_data[employee] = []
-    # Add the work entry for this employee
-    employee_data[employee].append({"item": item_name, "amount": amount})
-    save_employee_data()  # Save data after adding entry
-    await ctx.send(f"{employee} added {amount} of {item_name}.")
+@bot.event
+async def on_ready():
+    print(f'Logged in as {bot.user}')
 
-# Command for employer to check all employee contributions
-@bot.command(name="atlyginimas")
-async def calculate_salaries(ctx):
+@bot.command()
+async def darbas(ctx, item_name: str, amount: int):
+    user_id = str(ctx.author.id)
+
+    # Ensure user record exists
+    if user_id not in employee_data:
+        employee_data[user_id] = {"items": {}}
+
+    # Log item
+    if item_name in employee_data[user_id]["items"]:
+        employee_data[user_id]["items"][item_name] += amount
+    else:
+        employee_data[user_id]["items"][item_name] = amount
+
+    # Save data
+    save_data(employee_data)
+
+    await ctx.send(f'Successfully logged {amount} units of "{item_name}".')
+
+@bot.command()
+async def atlyginimas(ctx):
     if not employee_data:
-        await ctx.send("No data to display.")
+        await ctx.send("No contributions recorded.")
         return
-    
-    report = "Items to be paid:\n"
-    for employee, entries in employee_data.items():
-        report += f"\n**{employee}**\n"
-        for entry in entries:
-            report += f"{entry['amount']} of {entry['item']}\n"
-    
-    await ctx.send(report)
 
-# Command to reset employee contributions (e.g., after paying salaries)
-@bot.command(name="reset")
-async def reset_data(ctx):
+    contributions = "Employee Contributions:\n"
+    for user_id, data in employee_data.items():
+        contributions += f'<@{user_id}>:\n'
+        for item_name, amount in data["items"].items():
+            contributions += f'  - {item_name}: {amount}\n'
+    
+    await ctx.send(contributions)
+
+@bot.command()
+async def reset(ctx):
     global employee_data
     employee_data = {}
-    save_employee_data()
-    await ctx.send("All employee contributions have been reset.")
+    save_data(employee_data)
+    await ctx.send("All contributions have been successfully reset.")
 
-def save_employee_data():
-    with open("employee_data.json", "w") as f:
-        json.dump(employee_data, f)
+@darbas.error
+async def darbas_error(ctx, error):
+    if isinstance(error, commands.BadArgument):
+        await ctx.send("Please enter a valid integer for amount.")
+    else:
+        await ctx.send("An error occurred while logging the item.")
 
-# Run the bot with the token from the environment
-bot.run(TOKEN)
+@bot.event
+async def on_command_error(ctx, error):
+    await ctx.send("An unexpected error occurred. Please try again.")
+
+# Replace 'YOUR_BOT_TOKEN' with your bot's token from environment variables
+bot.run(os.getenv('DISCORD_TOKEN'))
 
