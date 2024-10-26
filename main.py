@@ -10,7 +10,11 @@ load_dotenv()
 # Load data from JSON file
 def load_data():
     if not os.path.exists('employee_data.json'):
+        # Create an empty JSON file if it does not exist
+        with open('employee_data.json', 'w') as file:
+            json.dump({}, file)
         return {}
+
     with open('employee_data.json', 'r') as file:
         return json.load(file)
 
@@ -21,7 +25,7 @@ def save_data(data):
 
 # Set up bot with command prefix
 intents = discord.Intents.default()
-intents.message_content = True
+intents.message_content = True  # Enable message content intent
 bot = commands.Bot(command_prefix='/', intents=intents)
 
 # Global variable to store employee contributions
@@ -29,7 +33,7 @@ employee_data = load_data()
 
 @bot.event
 async def on_ready():
-    print(f'Logged in as {bot.user}')
+    print(f'Prisijungta kaip {bot.user}')
 
 @bot.command()
 async def darbas(ctx, item_name: str, amount: int):
@@ -48,40 +52,48 @@ async def darbas(ctx, item_name: str, amount: int):
     # Save data
     save_data(employee_data)
 
-    await ctx.send(f'Successfully logged {amount} units of "{item_name}".')
+    await ctx.send(f'Sėkmingai užregistruota {amount} vnt. „{item_name}“.')  # Confirmation message
 
 @bot.command()
 async def atlyginimas(ctx):
     if not employee_data:
-        await ctx.send("No contributions recorded.")
+        await ctx.send("Nėra užregistruotų indėlių.")  # No contributions recorded
         return
 
-    contributions = "Employee Contributions:\n"
+    contributions = "Darbuotojų indėliai:\n"  # Employee Contributions
     for user_id, data in employee_data.items():
         contributions += f'<@{user_id}>:\n'
         for item_name, amount in data["items"].items():
-            contributions += f'  - {item_name}: {amount}\n'
-    
+            contributions += f'  {item_name}: {amount}\n'  # Adjusted formatting
+
     await ctx.send(contributions)
 
 @bot.command()
-async def reset(ctx):
+@commands.has_any_role("Pavaduotoja", "Direktorius")  # Allow users with "Pavaduotoja" or "Direktorius" roles
+async def ismoketi(ctx):
     global employee_data
     employee_data = {}
     save_data(employee_data)
-    await ctx.send("All contributions have been successfully reset.")
+    await ctx.send("Visi indėliai sėkmingai atstatyti.")  # Reset confirmation
+
+@ismoketi.error
+async def ismoketi_error(ctx, error):
+    if isinstance(error, commands.MissingAnyRole):
+        await ctx.send("Neturite teisės naudoti šio komandos.")  # Missing permissions
+    else:
+        await ctx.send("Įvyko klaida, bandant atstatyti duomenis.")  # General error
 
 @darbas.error
 async def darbas_error(ctx, error):
     if isinstance(error, commands.BadArgument):
-        await ctx.send("Please enter a valid integer for amount.")
+        await ctx.send("Prašome įvesti galiojantį sveikąjį skaičių.")  # Invalid amount message
     else:
-        await ctx.send("An error occurred while logging the item.")
+        await ctx.send("Įvyko klaida registruojant prekę.")  # Error while logging the item
 
 @bot.event
 async def on_command_error(ctx, error):
-    await ctx.send("An unexpected error occurred. Please try again.")
+    await ctx.send("Įvyko nenumatyta klaida. Prašome bandyti dar kartą.")  # Unexpected error
 
-# Replace 'YOUR_BOT_TOKEN' with your bot's token from environment variables
+# Run the bot with the token from the environment variables
 bot.run(os.getenv('DISCORD_TOKEN'))
 
