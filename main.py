@@ -19,8 +19,27 @@ ITEM_VALUES = {
     "avietes": 0.1,
     "pienas":0.1,
     "svogunai":0.1,
-    "siuksles":0.05
+    "siuksles":0.05,
+    "miltai":0.25
 }
+
+
+
+ITEM_PRICE = {
+    "parduota-sultys": 0,
+    "apelsinai": 60,
+    "sultys": 375, # Add other items here with their respective values if needed
+    "salotos": 70,
+    "moliugai": 50,
+    "pomidorai": 50,
+    "grudai": 18,
+    "avietes": 50,
+    "pienas": 70,
+    "svogunai":70,
+    "siuksles": 0,
+    "miltai": 25
+}
+
 
 LOTTERY_PRICE = 500
 
@@ -113,6 +132,24 @@ async def atlyginimas(ctx):
 
 @bot.command()
 @commands.has_any_role("Pavaduotoja", "Direktorius")  # Allow users with "Pavaduotoja" or "Direktorius" roles
+async def skaiciuoti(ctx):
+    if not employee_data:
+        await ctx.send("Nera atliktu darbu.")
+        return
+    summary = "Atlyginimu suvestine: \n"
+    for user_id, data in employee_data.items():
+        summary += (f'<@{user_id}> atlyginimas:\n')
+        sum = 0
+        for item_name, item_amount in data["items"].items():
+            salary_per_item = ITEM_PRICE.get(item_name, 0) * item_amount
+            sum += salary_per_item
+            summary+=f'{item_name} - {salary_per_item}\n'
+        summary+=f'Bendra Suma: {sum}\n'   
+    await ctx.send(summary) 
+
+
+@bot.command()
+@commands.has_any_role("Pavaduotoja", "Direktorius")  # Allow users with "Pavaduotoja" or "Direktorius" roles
 async def ismoketi(ctx):
     global employee_data
     employee_data = {}
@@ -159,6 +196,13 @@ async def dovana(ctx, member: discord.Member, amount: int):
     await ctx.send(f"Sėkmingai pridėta {amount} RanchCoins vartotojui {member.display_name}. Naujas balansas: {new_balance} RanchCoins.")
 
 
+
+@skaiciuoti.error
+async def skaiciuoti_error(ctx, error):
+    if isinstance(error, commands.MissingAnyRole):
+        await ctx.send("Neturite teisės naudoti šio komandos.")  # Missing permissions
+    else:
+        await ctx.send("Įvyko klaida, bandant atstatyti duomenis.")  # General error
 
 @dovana.error
 async def dovana_error(ctx, error):
