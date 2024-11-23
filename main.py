@@ -143,7 +143,7 @@ async def skaiciuoti(ctx):
         for item_name, item_amount in data["items"].items():
             salary_per_item = ITEM_PRICE.get(item_name, 0) * item_amount
             sum += salary_per_item
-            summary+=f'{item_name} - {salary_per_item}\n'
+            summary+=f'{item_name} : {salary_per_item}\n'
         summary+=f'Bendra Suma: {sum}\n'   
     await ctx.send(summary) 
 
