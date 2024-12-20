@@ -44,8 +44,8 @@ ITEM_PRICE = {
 LOTTERY_PRICE = 500
 
 # Probability
-PRIZES = ["$1 000 000","$100 000", "$10 000", "3 rinkinukus", "3 vaistineles"]
-WEIGHTS = [1, 4, 25, 35, 35]
+PRIZES = ["TRAKTORIUS","$100 000", "$10 000", "3 rinkinukus", "3 vaistineles"]
+WEIGHTS = [15, 10, 25, 25, 25]
 
 # Load data from JSON file
 def load_data():
